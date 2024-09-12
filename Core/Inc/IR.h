@@ -12,4 +12,4 @@ typedef struct IRPacket{
 
 void receive();
 void IRInit(uint8_t address, IRMode mode);
-void IRSend(uint8_t data);
+void IRSend(uint16_t data);

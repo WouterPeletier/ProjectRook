@@ -155,7 +155,7 @@ void initTIMIRS(uint16_t dutycycle, uint32_t frequency) {
     if(frequency > 50000) frequency = 50000;
     if(frequency < 20000) frequency = 20000;
     uint32_t prescal = 0;
-    uint32_t autoreload = (F_CPU/(frequency/2*(prescal+1)))-1;
+    uint32_t autoreload = (F_CPU/(frequency/(prescal+1)))-1;
     uint32_t ccr2 = (dutycycle*autoreload)/100;
 
     RCC->APB1ENR |= RCC_APB1ENR_TIM5EN;

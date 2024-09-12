@@ -11,7 +11,6 @@ static void init_clock(void);
 static void init_clock_hse(void);
 static void init_systick(void);
 
-
 void init_platform(void)
 {
 	init_clock_hse();

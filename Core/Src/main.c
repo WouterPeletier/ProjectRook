@@ -1,4 +1,4 @@
-#include <stdint.h>
+ #include <stdint.h>
 #include <stdio.h>
 #include <stm32f4xx.h>
 #include <stdbool.h>
@@ -7,7 +7,10 @@
 #include "gpio.h"
 #include "pwm.h"
 #include "interrupts.h"
+#include "user_interface.h"
 #include "IR.h"
+#include "fonts.h"
+#include "ssd1306.h"
 
 #ifdef SEMIHOSTING
    extern void initialise_monitor_handles(void);
@@ -21,7 +24,9 @@
 
 
 #define Receiving
-#define Address = 1; //Address tussen 0 en 32
+int32_t Address = 1; //Address tussen 0 en 32
+int32_t PDLC_intensity = 0;
+bool transmit = true;
 
 IRMode IRSendReceive = Send;
 IRPacket * IRMsg = {0};
@@ -33,18 +38,21 @@ uint16_t receivedIR;
 bool receiveFlag = false;
 bool sendFlag = false;
 
+
 void beacon_main(void);
 void bril_main(void);
 
 int main(void){
+
     #ifdef SEMIHOSTING
         initialise_monitor_handles();
     #endif  
+
   
     init_platform();
-    DEBUGLOG("Platform Initiated\r\n");
+    //DEBUGLOG("Platform Initiated\r\n");
 
-    bril_main();
+    beacon_main();
 }
 
 void bril_main(void)
@@ -74,16 +82,41 @@ void bril_main(void)
 }
 
 void beacon_main(void) {
-	DEBUGLOG("Running Becaon Code");
-	IRMsg->IRAddress = 1;
+	//DEBUGLOG("Running Beacon Code");
+	IRMsg->IRAddress = Address;
 
+	//DEBUGLOG("initializing IR LED GPIO");
 	init_gpio(GPIOA, GPIO_0, GPIO_MODER_ALT, GPIO_ALTFUNC_0, GPIO_OTYPER_PUSHPULL, GPIO_PULL_NONE, GPIO_OSPEEDR_HIGH);
+
+	//DEBUGLOG("initializing UI button GPIO's");
+	//init_gpio(inputPort, ROTA_pin, GPIO_MODER_INPUT, GPIO_ALTFUNC_0, GPIO_OTYPER_PUSHPULL, GPIO_PULL_DOWN, GPIO_OSPEEDR_LOW);
+	set_interrupt(inputPort, ROTA_pin, INT_RISING_EDGE, GPIO_PULL_DOWN);
+	set_interrupt(inputPort, PB_pin, INT_RISING_EDGE, GPIO_PULL_DOWN);
+	set_interrupt(inputPort, ROTB_pin, INT_RISING_EDGE, GPIO_PULL_DOWN);
+
+	//DEBUGLOG("initializing I2C GPIO's");
+	init_gpio(GPIOB, GPIO_6, GPIO_MODER_ALT, GPIO_ALTFUNC_4, GPIO_OTYPER_OPENDRAIN, GPIO_PULL_UP, GPIO_OSPEEDR_HIGH); // scl
+	init_gpio(GPIOB, GPIO_7, GPIO_MODER_ALT, GPIO_ALTFUNC_4, GPIO_OTYPER_OPENDRAIN, GPIO_PULL_UP, GPIO_OSPEEDR_HIGH); // sda
+
+	//DEBUGLOG("initializing I2C and display driver");
+	SSD1306_Init();
+	init_settings();
+
 	gpio_toggle(GPIOA, GPIO_0);
 	initTIMIRS(50, 38000);
 	IRInit(0b00110, Send);
-	for(volatile uint32_t j = 0; j<400000; j++) {
-	}
-	IRSend(0b011010);
+
 	while(1){
+		if (transmit)
+		{
+			for(volatile uint32_t j = 0; j<400000; j++);
+			IRSend(((Address << 4) & 0b11110000) | (PDLC_intensity & 0b00001111));
+		}
+		else
+		{
+			__WFI();
+		}
 	}
+        //
 }
+
